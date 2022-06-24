@@ -155,6 +155,27 @@ func (r *Region) ForEachInVolumePreservingSphere(cx, cy, cz, radius float64, bia
 	}
 }
 
+func (r *Region) ForEachOnBorder(f func(x, y, z int)) {
+	for y := 0; y < r.ydim; y++ {
+		for x := 0; x < r.xdim; x++ {
+			f(x, y, 0)
+			f(x, y, r.zdim-1)
+		}
+	}
+	for y := 0; y < r.ydim; y++ {
+		for z := 1; z < r.zdim-1; z++ {
+			f(0, y, z)
+			f(r.xdim-1, y, z)
+		}
+	}
+	for x := 1; x < r.xdim-1; x++ {
+		for z := 1; z < r.zdim-1; z++ {
+			f(x, 0, z)
+			f(x, r.ydim-1, z)
+		}
+	}
+}
+
 func (r *Region) Hollow() {
 	fmt.Println("Hollowing...")
 	isSurface := MakeRegionCache[bool](r)

@@ -34,7 +34,7 @@ func main() {
 	zoomPtr := flag.Float64("zoom", 0.030000000000000006, "zoom factor")
 	flag.Parse()
 
-	r.ForEachNormalized(func(x, y, z float64) int {
+	r.ForEachNormalizedParallel(8, func(x, y, z float64) int {
 		v := util.MakeVec3d(x, y, z)
 		v = v.Scale(*zoomPtr).Add(util.MakeVec3d(*xPtr, *yPtr, *zPtr))
 		c := v

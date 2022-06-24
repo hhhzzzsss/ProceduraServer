@@ -91,6 +91,77 @@ func (r *Region) ForEachNormalized(idGenerator func(x, y, z float64) int) {
 	bar.Finish()
 }
 
+func (r *Region) ForEachParallel(threads int, idGenerator func(x, y, z int) int) {
+	var bar util.ProgressBar
+	bar.Initialize(r.ydim)
+	cLayer := make(chan int, r.ydim)
+	cDone := make(chan struct{}, r.ydim)
+	for i := 0; i < threads; i++ {
+		go r.forEachWorker(cLayer, cDone, idGenerator)
+	}
+	for y := 0; y < r.ydim; y++ {
+		cLayer <- y
+	}
+	for y := 0; y < r.ydim; y++ {
+		<-cDone
+		bar.Play(y + 1)
+	}
+	bar.Finish()
+}
+
+func (r *Region) forEachWorker(cLayer chan int, cDone chan struct{}, idGenerator func(x, y, z int) int) {
+	for y := range cLayer {
+		for z := 0; z < r.zdim; z++ {
+			for x := 0; x < r.xdim; x++ {
+				r.Set(x, y, z, idGenerator(x, y, z))
+			}
+		}
+		cDone <- struct{}{}
+	}
+}
+
+func (r *Region) ForEachNormalizedParallel(threads int, idGenerator func(x, y, z float64) int) {
+	var bar util.ProgressBar
+	bar.Initialize(r.ydim)
+	cLayer := make(chan int, r.ydim)
+	cDone := make(chan struct{}, r.ydim)
+	for i := 0; i < threads; i++ {
+		go r.forEachNormalizedWorker(cLayer, cDone, idGenerator)
+	}
+	for y := 0; y < r.ydim; y++ {
+		cLayer <- y
+	}
+	for y := 0; y < r.ydim; y++ {
+		<-cDone
+		bar.Play(y + 1)
+	}
+	bar.Finish()
+}
+
+func (r *Region) forEachNormalizedWorker(cLayer chan int, cDone chan struct{}, idGenerator func(x, y, z float64) int) {
+	minDim := r.xdim
+	if r.ydim < minDim {
+		minDim = r.ydim
+	}
+	if r.zdim < minDim {
+		minDim = r.zdim
+	}
+	for y := range cLayer {
+		for z := 0; z < r.zdim; z++ {
+			for x := 0; x < r.xdim; x++ {
+				xNorm := 2.0*float64(x)/float64(r.xdim) - 1.0
+				yNorm := 2.0*float64(y)/float64(r.ydim) - 1.0
+				zNorm := 2.0*float64(z)/float64(r.zdim) - 1.0
+				xNorm *= float64(r.xdim) / float64(minDim)
+				yNorm *= float64(r.ydim) / float64(minDim)
+				zNorm *= float64(r.zdim) / float64(minDim)
+				r.Set(x, y, z, idGenerator(xNorm, yNorm, zNorm))
+			}
+		}
+		cDone <- struct{}{}
+	}
+}
+
 func (r *Region) ForEachInSphere(cx, cy, cz, radius float64, f func(x, y, z int, rad2 float64)) {
 	x1 := int(math.Floor(cx - radius))
 	y1 := int(math.Floor(cy - radius))

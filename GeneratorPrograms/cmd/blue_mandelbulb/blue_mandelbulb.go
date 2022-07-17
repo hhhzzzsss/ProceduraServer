@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"math"
 
 	"github.com/hhhzzzsss/procedura-generator/region"
@@ -16,19 +15,13 @@ func main() {
 	r.AddPaletteBlock("light_blue_concrete")
 	r.AddPaletteBlock("blue_concrete")
 
-	xPtr := flag.Float64("x", 0.0, "x position")
-	yPtr := flag.Float64("y", 0.0, "y position")
-	zPtr := flag.Float64("z", 0.0, "z position")
-	zoomPtr := flag.Float64("zoom", 1.0, "zoom factor")
-	flag.Parse()
-
 	r.ForEachNormalized(func(x, y, z float64) int {
 		Z := util.Triplex{}
-		C := util.MakeTriplex(x, y, z).Multiply(*zoomPtr).Add(util.MakeTriplex(*xPtr, *yPtr, *zPtr))
+		C := util.MakeTriplex(x, y, z).Multiply(1.2)
 		minXDist := 10.0
 		minYDist := 10.0
 		minZDist := 10.0
-		for i := 0; i < 12; i++ {
+		for i := 0; i < 5; i++ {
 			Z = Z.Pow(8).Add(C)
 			if math.Abs(Z.X) < minXDist {
 				minXDist = math.Abs(Z.X)

@@ -24,12 +24,12 @@ func main() {
 		r.AddPaletteBlock("amethyst_block")
 	}
 
+	scale := 1.1
+	resolution := 2. * scale / float64(dim)
 	r.ForEachNormalized(func(x, y, z float64) int {
 		if y > 0 {
 			return 0
 		}
-		scale := 1.1
-		resolution := 2. * scale / float64(dim)
 		x = x * scale
 		y = y * scale
 		z = z*scale + 0.2

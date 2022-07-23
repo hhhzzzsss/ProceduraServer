@@ -249,17 +249,18 @@ func (r *Region) ForEachOnBorder(f func(x, y, z int)) {
 
 func (r *Region) Hollow() {
 	fmt.Println("Hollowing...")
-	isSurface := MakeRegionCache[bool](r)
+	isInterior := MakeRegionCache[bool](r)
 	for y := 1; y < r.ydim-1; y++ {
 		for z := 1; z < r.zdim-1; z++ {
 			for x := 1; x < r.xdim-1; x++ {
-				if r.Get(x+1, y, z) == 0 ||
-					r.Get(x-1, y, z) == 0 ||
-					r.Get(x, y+1, z) == 0 ||
-					r.Get(x, y-1, z) == 0 ||
-					r.Get(x, y, z+1) == 0 ||
-					r.Get(x, y, z-1) == 0 {
-					isSurface.Set(x, y, z, true)
+				if r.Get(x, y, z) != 0 &&
+					r.Get(x+1, y, z) != 0 &&
+					r.Get(x-1, y, z) != 0 &&
+					r.Get(x, y+1, z) != 0 &&
+					r.Get(x, y-1, z) != 0 &&
+					r.Get(x, y, z+1) != 0 &&
+					r.Get(x, y, z-1) != 0 {
+					isInterior.Set(x, y, z, true)
 				}
 			}
 		}
@@ -267,7 +268,7 @@ func (r *Region) Hollow() {
 	for y := 1; y < r.ydim-1; y++ {
 		for z := 1; z < r.zdim-1; z++ {
 			for x := 1; x < r.xdim-1; x++ {
-				if !isSurface.Get(x, y, z) {
+				if isInterior.Get(x, y, z) {
 					r.Set(x, y, z, 0)
 				}
 			}
@@ -277,20 +278,18 @@ func (r *Region) Hollow() {
 
 func (r *Region) SelectiveHollow(id int) {
 	fmt.Printf("Hollowing blocks with id %d...\n", id)
-	isSurface := MakeRegionCache[bool](r)
+	isInterior := MakeRegionCache[bool](r)
 	for y := 1; y < r.ydim-1; y++ {
 		for z := 1; z < r.zdim-1; z++ {
 			for x := 1; x < r.xdim-1; x++ {
-				if r.Get(x, y, z) != id {
-					continue
-				}
-				if r.Get(x+1, y, z) != id ||
-					r.Get(x-1, y, z) != id ||
-					r.Get(x, y+1, z) != id ||
-					r.Get(x, y-1, z) != id ||
-					r.Get(x, y, z+1) != id ||
-					r.Get(x, y, z-1) != id {
-					isSurface.Set(x, y, z, true)
+				if r.Get(x, y, z) == id &&
+					r.Get(x+1, y, z) == id &&
+					r.Get(x-1, y, z) == id &&
+					r.Get(x, y+1, z) == id &&
+					r.Get(x, y-1, z) == id &&
+					r.Get(x, y, z+1) == id &&
+					r.Get(x, y, z-1) == id {
+					isInterior.Set(x, y, z, true)
 				}
 			}
 		}
@@ -298,11 +297,36 @@ func (r *Region) SelectiveHollow(id int) {
 	for y := 1; y < r.ydim-1; y++ {
 		for z := 1; z < r.zdim-1; z++ {
 			for x := 1; x < r.xdim-1; x++ {
-				if r.Get(x, y, z) != id {
-					continue
-				}
-				if !isSurface.Get(x, y, z) {
+				if isInterior.Get(x, y, z) {
 					r.Set(x, y, z, 0)
+				}
+			}
+		}
+	}
+}
+
+func (r *Region) ForEachInInterior(f func(x, y, z int)) {
+	isInterior := MakeRegionCache[bool](r)
+	for y := 1; y < r.ydim-1; y++ {
+		for z := 1; z < r.zdim-1; z++ {
+			for x := 1; x < r.xdim-1; x++ {
+				if r.Get(x, y, z) != 0 &&
+					r.Get(x+1, y, z) != 0 &&
+					r.Get(x-1, y, z) != 0 &&
+					r.Get(x, y+1, z) != 0 &&
+					r.Get(x, y-1, z) != 0 &&
+					r.Get(x, y, z+1) != 0 &&
+					r.Get(x, y, z-1) != 0 {
+					isInterior.Set(x, y, z, true)
+				}
+			}
+		}
+	}
+	for y := 1; y < r.ydim-1; y++ {
+		for z := 1; z < r.zdim-1; z++ {
+			for x := 1; x < r.xdim-1; x++ {
+				if isInterior.Get(x, y, z) && r.Get(x, y, z) != 0 {
+					f(x, y, z)
 				}
 			}
 		}

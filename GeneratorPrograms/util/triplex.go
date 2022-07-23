@@ -14,6 +14,10 @@ func (t Triplex) Add(o Triplex) Triplex {
 	return Triplex{t.X + o.X, t.Y + o.Y, t.Z + o.Z}
 }
 
+func (t Triplex) Sub(o Triplex) Triplex {
+	return Triplex{t.X - o.X, t.Y - o.Y, t.Z - o.Z}
+}
+
 func (t Triplex) Multiply(m float64) Triplex {
 	return Triplex{t.X * m, t.Y * m, t.Z * m}
 }

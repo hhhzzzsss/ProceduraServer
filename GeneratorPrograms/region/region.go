@@ -18,6 +18,7 @@ type Region struct {
 	xdim, ydim, zdim int
 	ids              []int
 	palette          []string
+	paletteDict      map[string]int
 }
 
 func MakeRegion(xdim, ydim, zdim int) Region {
@@ -25,11 +26,19 @@ func MakeRegion(xdim, ydim, zdim int) Region {
 		xdim, ydim, zdim,
 		make([]int, xdim*ydim*zdim),
 		make([]string, 0),
+		make(map[string]int),
 	}
 }
 
-func (r *Region) AddPaletteBlock(block string) {
-	r.palette = append(r.palette, block)
+func (r *Region) AddPaletteBlock(block string) int {
+	if id, ok := r.paletteDict[block]; ok {
+		return id
+	} else {
+		r.palette = append(r.palette, block)
+		id := len(r.palette) - 1
+		r.paletteDict[block] = id
+		return id
+	}
 }
 
 func (r *Region) PaletteSize() int {
@@ -41,6 +50,10 @@ func (r *Region) Set(x, y, z, id int) {
 		return
 	}
 	r.ids[y*r.zdim*r.xdim+z*r.xdim+x] = id
+}
+
+func (r *Region) SetWithName(x, y, z int, name string) {
+	r.Set(x, y, z, r.AddPaletteBlock(name)) // AddPaletteBlock checks whether the name already exists
 }
 
 func (r *Region) Get(x, y, z int) int {

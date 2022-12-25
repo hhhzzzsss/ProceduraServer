@@ -1,11 +1,11 @@
-package structuregen
+package direction
 
 import "github.com/hhhzzzsss/procedura-generator/util"
 
 type Direction int
 
 const (
-	North int = iota
+	North Direction = iota
 	East
 	South
 	West

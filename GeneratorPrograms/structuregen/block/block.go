@@ -34,7 +34,7 @@ func MakeBlock(name string, state map[string]string) Block {
 func (b Block) Rotate(a int) Block {
 	dir, ok := b.state["facing"]
 	if ok {
-		var newState map[string]string
+		newState := make(map[string]string)
 		for key, value := range b.state {
 			newState[key] = value
 		}

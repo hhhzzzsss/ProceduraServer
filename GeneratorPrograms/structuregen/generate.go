@@ -18,6 +18,12 @@ type StructureGenSettings struct {
 	MaxRoomAttempts           int
 }
 
+func defaultStartingRoomGenerator() []rooms.Room {
+	return []rooms.Room{
+		&rooms.StartingRoom{},
+	}
+}
+
 func defaultRoomGenerator() []rooms.Room {
 	return []rooms.Room{
 		&rooms.DefaultRoom{},
@@ -27,84 +33,127 @@ func defaultRoomGenerator() []rooms.Room {
 func GetDefaultSettings() StructureGenSettings {
 	return StructureGenSettings{
 		XDim: 256, YDim: 256, ZDim: 256,
-		XOrigin: 127, YOrigin: 1, ZOrigin: 0,
-		StartingEntranceDirection: direction.North,
-		StartingRoomGenerator:     defaultRoomGenerator,
+		XOrigin: 0, YOrigin: 50, ZOrigin: 127,
+		StartingEntranceDirection: direction.West,
+		StartingRoomGenerator:     defaultStartingRoomGenerator,
 		MaxRoomAttempts:           5,
 	}
 }
 
 func GenerateStructure(settings *StructureGenSettings) region.Region {
 	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
-	region := region.MakeRegion(xdim, ydim, zdim)
-	region.AddPaletteBlock("air")
 
-	origin_entrance := &rooms.EntranceLocation{
+	// Create palettte for the superflat terrain and fill region with structure void
+	region := region.MakeRegion(xdim, ydim, zdim)
+	region.AddPaletteBlock("structure_void") // 0
+	region.AddPaletteBlock("air")            // 1
+	region.AddPaletteBlock("grass_block")    // 2
+	region.AddPaletteBlock("dirt")           // 3
+	region.AddPaletteBlock("stone")          // 4
+	region.AddPaletteBlock("bedrock")        // 5
+	region.ForEach(func(x, y, z int) int {
+		return 0
+	})
+
+	origin_entrance := rooms.EntranceLocation{
 		Pos:           util.MakeVec3i(settings.XOrigin, settings.YOrigin, settings.ZOrigin),
 		Dir:           settings.StartingEntranceDirection,
 		RoomGenerator: settings.StartingRoomGenerator,
 		Meta:          &settings.StartingRoomMeta,
 	}
-	potentialEntrances := []*rooms.EntranceLocation{origin_entrance}
+	potentialEntrances := []rooms.EntranceLocation{origin_entrance}
 
 	roomViews := make([]*rooms.RoomView, 0)
 
 	for len(potentialEntrances) > 0 {
 		// Select random entrance location and remove from potentialEntrances
-		selectedEntranceLocation := removeRandomFromSlice(potentialEntrances)
+		selectedEntranceLocation := removeRandomFromSlice(&potentialEntrances)
 
 		// Generate room and add new RoomView / EntranceLocation(s) to lists if exists
 		rv := generateRoom(selectedEntranceLocation, &region, settings)
 		if rv != nil {
 			roomViews = append(roomViews, rv)
-			for _, el := range rv.GetEntranceLocations() {
-				potentialEntrances = append(potentialEntrances, &el)
-			}
+			potentialEntrances = append(potentialEntrances, rv.GetEntranceLocations()...)
 		}
 	}
+
+	region.ForEach(func(x, y, z int) int {
+		if region.Get(x, y, z) == 0 {
+			if y >= 50 {
+				return 1 // air
+			} else if y == 49 {
+				return 2 // grass_block
+			} else if y >= 17 && y <= 48 {
+				return 3 // dirt
+			} else if y >= 1 && y <= 16 {
+				return 4 // stone
+			} else {
+				return 5 // bedrock
+			}
+		} else {
+			return region.Get(x, y, z)
+		}
+	})
 
 	return region
 }
 
-func generateRoom(entranceLocation *rooms.EntranceLocation, region *region.Region, settings *StructureGenSettings) *rooms.RoomView {
-	possibleRooms := entranceLocation.RoomGenerator()
+func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region, settings *StructureGenSettings) *rooms.RoomView {
+	var possibleRooms []rooms.Room
+	if entranceLocation.RoomGenerator == nil {
+		possibleRooms = defaultRoomGenerator()
+	} else {
+		possibleRooms = entranceLocation.RoomGenerator()
+	}
 	parent := entranceLocation.Parent
+	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
 generateRoomOuterLoop:
 	for attempts := 0; attempts < settings.MaxRoomAttempts && len(possibleRooms) > 0; attempts++ {
-		room := removeRandomFromSlice(possibleRooms)
+		room := removeRandomFromSlice(&possibleRooms)
 		room.Initialize(entranceLocation.Meta)
 		roomView := rooms.GetView(room, entranceLocation.Pos, entranceLocation.Dir)
 		transformedMainEntrance := roomView.GetTransformedMainEntranceExterior()
-		if entranceLocation.Parent != nil {
+		if parent != nil {
 			for pos := range transformedMainEntrance {
-				if !parent.Contains(pos) || !parent.CanReplaceBlock(pos) {
+				if !parent.CanReplaceBlock(pos) {
 					continue generateRoomOuterLoop
 				}
-			}
-			for pos, block := range transformedMainEntrance {
-				parent.ReplaceBlock(pos, block)
 			}
 		}
 		transformedPositions, transformedBlocks := roomView.GetTransformedBlocks()
 		for _, pos := range transformedPositions {
-			regionVal := region.Get(pos.X, pos.Y, pos.Z)
-			parentVal, ok := parent.GetBlock(pos)
-			if regionVal != 0 && !(ok && parentVal.IsAir()) {
+			if pos.X < 0 || pos.Y < 0 || pos.Z < 0 || pos.X >= xdim || pos.Y >= ydim || pos.Z >= zdim {
 				continue generateRoomOuterLoop
+			}
+			regionVal := region.Get(pos.X, pos.Y, pos.Z)
+			if regionVal != 0 {
+				continue generateRoomOuterLoop
+			}
+		}
+		if parent != nil {
+			for pos, block := range transformedMainEntrance {
+				parent.ReplaceBlock(pos, block)
+			}
+		}
+		for pos, block := range transformedMainEntrance {
+			// Needs extra check for the nil parent case
+			if pos.X >= 0 && pos.Y >= 0 && pos.Z >= 0 && pos.X < xdim && pos.Y < ydim && pos.Z < zdim {
+				region.SetWithName(pos.X, pos.Y, pos.Z, block.ToString())
 			}
 		}
 		for i, pos := range transformedPositions {
 			region.SetWithName(pos.X, pos.Y, pos.Z, transformedBlocks[i].ToString())
 		}
+		return &roomView
 	}
 	return nil
 }
 
-func removeRandomFromSlice[T any](s []T) T {
-	selectedIdx := rand.Intn(len(s))
-	lastIdx := len(s) - 1
-	selectedElem := s[selectedIdx]
-	s[selectedIdx] = s[lastIdx]
-	s = s[:lastIdx]
+func removeRandomFromSlice[T any](s *[]T) T {
+	selectedIdx := rand.Intn(len(*s))
+	lastIdx := len(*s) - 1
+	selectedElem := (*s)[selectedIdx]
+	(*s)[selectedIdx] = (*s)[lastIdx]
+	(*s) = (*s)[:lastIdx]
 	return selectedElem
 }

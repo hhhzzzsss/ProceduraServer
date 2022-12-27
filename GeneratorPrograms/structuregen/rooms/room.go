@@ -173,6 +173,15 @@ func (r *RoomBase) AddEntranceLocation(
 	r.EntranceLocations = append(r.EntranceLocations, EntranceLocation{util.MakeVec3i(X, Y, Z), Dir, GetPossibleRooms, Meta, nil})
 }
 
+func (r *RoomBase) ApplyDecoration(x, y, z int, d decorations.Decoration) {
+	v := util.MakeVec3i(x, y, z)
+	for pos, block := range d {
+		roomPos := v.Add(pos)
+		r.Blocks[roomPos] = block
+		r.ReplaceableBlocks[roomPos] = false
+	}
+}
+
 // func (r *RoomBase) ClearBoundingBoxes() {
 // 	r.BoundingBoxes = make([]util.BoundingBox, 0)
 // }

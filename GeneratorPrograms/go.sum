@@ -1,2 +1,4 @@
 github.com/fogleman/poissondisc v0.0.0-20190923201222-9b82984c50c5 h1:tMj+OgNbdN8AYbdK3CQSnBUDsoDckkNoU45w26iPTP8=
 github.com/fogleman/poissondisc v0.0.0-20190923201222-9b82984c50c5/go.mod h1:h1KpvovnFz2KYZqeagyCfHVwxLKri6UFqsg472bYvbY=
+golang.org/x/exp v0.0.0-20221227203929-1b447090c38c h1:Govq2W3bnHJimHT2ium65kXcI7ZzTniZHcFATnLJM0Q=
+golang.org/x/exp v0.0.0-20221227203929-1b447090c38c/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=

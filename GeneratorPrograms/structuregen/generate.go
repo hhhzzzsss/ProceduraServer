@@ -1,6 +1,7 @@
 package structuregen
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/hhhzzzsss/procedura-generator/region"
@@ -33,7 +34,7 @@ func defaultRoomGenerator() []rooms.Room {
 func GetDefaultSettings() StructureGenSettings {
 	return StructureGenSettings{
 		XDim: 256, YDim: 256, ZDim: 256,
-		XOrigin: 0, YOrigin: 50, ZOrigin: 127,
+		XOrigin: 1, YOrigin: 50, ZOrigin: 127,
 		StartingEntranceDirection: direction.West,
 		StartingRoomGenerator:     defaultStartingRoomGenerator,
 		MaxRoomAttempts:           5,
@@ -44,6 +45,7 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
 
 	// Create palettte for the superflat terrain and fill region with structure void
+	fmt.Println("Initializing region...")
 	region := region.MakeRegion(xdim, ydim, zdim)
 	region.AddPaletteBlock("structure_void") // 0
 	region.AddPaletteBlock("air")            // 1
@@ -54,6 +56,8 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 	region.ForEach(func(x, y, z int) int {
 		return 0
 	})
+
+	fmt.Println("Generating Structure...")
 
 	origin_entrance := rooms.EntranceLocation{
 		Pos:           util.MakeVec3i(settings.XOrigin, settings.YOrigin, settings.ZOrigin),
@@ -77,6 +81,7 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 		}
 	}
 
+	fmt.Println("Filling superflat terrain...")
 	region.ForEach(func(x, y, z int) int {
 		if region.Get(x, y, z) == 0 {
 			if y >= 50 {

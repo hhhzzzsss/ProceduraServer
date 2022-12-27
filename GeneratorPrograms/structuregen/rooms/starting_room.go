@@ -18,10 +18,13 @@ func (r *StartingRoom) GetRoomBase() *RoomBase {
 func (r *StartingRoom) Initialize(meta *RoomMeta) {
 	r.ClearAll()
 
-	const room_size = 16
-	const room_height = 8
+	title1, title1_width := decorations.GetBlockText("mansion", "blackstone", "blackstone_slab", "blackstone_stairs")
+	title2, title2_width := decorations.GetBlockText("of babel", "blackstone", "blackstone_slab", "blackstone_stairs")
+	credits1, credits1_width := decorations.GetBlockText("made by", "blackstone", "blackstone_slab", "blackstone_stairs")
+	credits2, credits2_width := decorations.GetBlockText("hhhzzzsss", "prismarine_bricks", "prismarine_brick_slab", "prismarine_brick_stairs")
 
-	// r.AddBoundingBox(0, 0, 0, room_size-1, room_height-1, room_size-1)
+	room_size := util.Max(title1_width+2, title2_width+2, credits1_width+4, credits2_width+4)
+	room_height := 12
 
 	r.FillBlocks(0, 0, 0, room_size-1, room_height-1, room_size-1, block.AIR)
 	r.MakeHollowCuboid(0, 0, 0, room_size-1, room_height-1, room_size-1, block.SMOOTH_QUARTZ)
@@ -32,6 +35,15 @@ func (r *StartingRoom) Initialize(meta *RoomMeta) {
 			r.SetReplaceableBlock(x, y, room_size-1, true)
 		}
 	}
+
+	title1_pos := (room_size - title1_width) / 2
+	title2_pos := (room_size - title2_width) / 2
+	credits1_pos := (room_size - credits1_width) / 2
+	credits2_pos := (room_size - credits2_width) / 2
+	r.ApplyDecoration(-1, 8, title1_pos, title1)
+	r.ApplyDecoration(-1, 4, title2_pos, title2)
+	r.ApplyDecoration(room_size-2, 7, credits1_pos, credits1)
+	r.ApplyDecoration(room_size-2, 3, credits2_pos, credits2)
 
 	r.MainEntranceLocation = util.MakeVec3i(0, 1, (room_size-1)/2)
 	r.MainEntrance = decorations.DoubleDoors(&decorations.DefaultDecorationMeta)

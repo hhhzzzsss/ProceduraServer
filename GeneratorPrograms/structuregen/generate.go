@@ -14,21 +14,29 @@ type StructureGenSettings struct {
 	XDim, YDim, ZDim          int
 	XOrigin, YOrigin, ZOrigin int
 	StartingEntranceDirection direction.Direction
-	StartingRoomGenerator     func() []rooms.Room
+	StartingRoomGenerator     func() ([]rooms.Room, []float32)
 	StartingRoomMeta          rooms.RoomMeta
 	MaxRoomAttempts           int
 }
 
-func defaultStartingRoomGenerator() []rooms.Room {
-	return []rooms.Room{
+func defaultStartingRoomGenerator() ([]rooms.Room, []float32) {
+	rooms := []rooms.Room{
 		&rooms.StartingRoom{},
 	}
+	weights := []float32{
+		1.0,
+	}
+	return rooms, weights
 }
 
-func defaultRoomGenerator() []rooms.Room {
-	return []rooms.Room{
+func defaultRoomGenerator() ([]rooms.Room, []float32) {
+	rooms := []rooms.Room{
 		&rooms.DefaultRoom{},
 	}
+	weights := []float32{
+		1.0,
+	}
+	return rooms, weights
 }
 
 func GetDefaultSettings() StructureGenSettings {
@@ -105,16 +113,17 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 
 func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region, settings *StructureGenSettings) *rooms.RoomView {
 	var possibleRooms []rooms.Room
+	var possibleRoomWeights []float32
 	if entranceLocation.RoomGenerator == nil {
-		possibleRooms = defaultRoomGenerator()
+		possibleRooms, possibleRoomWeights = defaultRoomGenerator()
 	} else {
-		possibleRooms = entranceLocation.RoomGenerator()
+		possibleRooms, possibleRoomWeights = entranceLocation.RoomGenerator()
 	}
 	parent := entranceLocation.Parent
 	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
 generateRoomOuterLoop:
 	for attempts := 0; attempts < settings.MaxRoomAttempts && len(possibleRooms) > 0; attempts++ {
-		room := removeRandomFromSlice(&possibleRooms)
+		room := removeWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
 		room.Initialize(entranceLocation.Meta)
 		roomView := rooms.GetView(room, entranceLocation.Pos, entranceLocation.Dir)
 		transformedMainEntrance := roomView.GetTransformedMainEntranceExterior()
@@ -160,5 +169,36 @@ func removeRandomFromSlice[T any](s *[]T) T {
 	selectedElem := (*s)[selectedIdx]
 	(*s)[selectedIdx] = (*s)[lastIdx]
 	(*s) = (*s)[:lastIdx]
+	return selectedElem
+}
+
+func removeWeightedRandomFromSlice[T any](s *[]T, weights *[]float32) T {
+	if len(*s) != len(*weights) {
+		panic("Element slice must have same length as weight slice")
+	}
+
+	lastIdx := len(*s) - 1
+
+	var totalWeight float32 = 0
+	for _, weight := range *weights {
+		totalWeight += weight
+	}
+
+	rval := rand.Float32() * totalWeight
+	var cumWeight float32 = 0
+	for i, weight := range *weights {
+		cumWeight += weight
+		if cumWeight >= rval {
+			selectedElem := (*s)[i]
+			(*s)[i] = (*s)[lastIdx]
+			(*s) = (*s)[:lastIdx]
+			(*weights)[i] = (*weights)[lastIdx]
+			(*weights) = (*weights)[:lastIdx]
+			return selectedElem
+		}
+	}
+	selectedElem := (*s)[lastIdx]
+	(*s) = (*s)[:lastIdx]
+	(*weights) = (*weights)[:lastIdx]
 	return selectedElem
 }

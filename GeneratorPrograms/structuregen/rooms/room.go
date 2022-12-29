@@ -20,7 +20,6 @@ type Room interface {
 
 	/*
 		Constructs everything in the room, including:
-		- Bounding boxes
 		- Blocks
 		- Replaceable blocks
 		- Main entrance / main entrance location
@@ -34,7 +33,6 @@ type Room interface {
 }
 
 type RoomBase struct {
-	// BoundingBoxes        []util.BoundingBox
 	Blocks               map[util.Vec3i]block.Block
 	ReplaceableBlocks    map[util.Vec3i]bool // 1 is initial state, set to 0 when replaced
 	MainEntrance         decorations.Decoration
@@ -51,11 +49,11 @@ var DefaultRoomMeta RoomMeta = RoomMeta{
 }
 
 type EntranceLocation struct {
-	Pos           util.Vec3i          // Base position of the entrance
-	Dir           direction.Direction // Direction of the entrance (relative to the potential room that will be put here)
-	RoomGenerator func() []Room       // Returns a slice of possible rooms to put here
-	Meta          *RoomMeta           // Additional info for room generation
-	Parent        *RoomView           // RoomView that is offering the EntranceLocation
+	Pos           util.Vec3i                 // Base position of the entrance
+	Dir           direction.Direction        // Direction of the entrance (relative to the potential room that will be put here)
+	RoomGenerator func() ([]Room, []float32) // Returns a slice of possible rooms to put here and their corresponding weights
+	Meta          *RoomMeta                  // Additional info for room generation
+	Parent        *RoomView                  // RoomView that is offering the EntranceLocation
 }
 
 type RoomView struct {
@@ -67,47 +65,6 @@ type RoomView struct {
 func GetView(r Room, origin util.Vec3i, dir direction.Direction) RoomView {
 	return RoomView{r, origin, int(dir)}
 }
-
-// func (r *RoomBase) CreateBasicBoundingBox() {
-// 	bb := util.BoundingBox{
-// 		X1: math.MaxInt, Y1: math.MaxInt, Z1: math.MaxInt,
-// 		X2: math.MinInt, Y2: math.MinInt, Z2: math.MinInt,
-// 	}
-// 	for pos := range r.Blocks {
-// 		if pos.X < bb.X1 {
-// 			bb.X1 = pos.X
-// 		}
-// 		if pos.Y < bb.Y1 {
-// 			bb.Y1 = pos.Y
-// 		}
-// 		if pos.Z < bb.Z1 {
-// 			bb.Z1 = pos.Z
-// 		}
-// 		if pos.X > bb.X2 {
-// 			bb.X2 = pos.X
-// 		}
-// 		if pos.Y > bb.Y2 {
-// 			bb.Y2 = pos.Y
-// 		}
-// 		if pos.Z > bb.Z2 {
-// 			bb.Z2 = pos.Z
-// 		}
-// 	}
-
-// 	if bb.X2 < bb.X1 || bb.Y2 < bb.Y1 || bb.Z2 < bb.Z1 {
-// 		panic("Tried to create basic bounding box, but room has no blocks")
-// 	}
-
-// 	r.BoundingBoxes = []util.BoundingBox{bb}
-// }
-
-// func (r *RoomBase) AddBoundingBox(x1, y1, z1, x2, y2, z2 int) {
-// 	bb := util.BoundingBox{
-// 		X1: x1, Y1: y1, Z1: z1,
-// 		X2: x2, Y2: y2, Z2: z2,
-// 	}
-// 	r.BoundingBoxes = append(r.BoundingBoxes, bb)
-// }
 
 // Sets the block at a position
 func (r *RoomBase) SetBlock(x, y, z int, block block.Block) {
@@ -167,7 +124,7 @@ func (r *RoomBase) ApplyMainEntrance() {
 func (r *RoomBase) AddEntranceLocation(
 	X, Y, Z int,
 	Dir direction.Direction,
-	GetPossibleRooms func() []Room,
+	GetPossibleRooms func() ([]Room, []float32),
 	Meta *RoomMeta,
 ) {
 	r.EntranceLocations = append(r.EntranceLocations, EntranceLocation{util.MakeVec3i(X, Y, Z), Dir, GetPossibleRooms, Meta, nil})
@@ -182,10 +139,6 @@ func (r *RoomBase) ApplyDecoration(x, y, z int, d decorations.Decoration) {
 	}
 }
 
-// func (r *RoomBase) ClearBoundingBoxes() {
-// 	r.BoundingBoxes = make([]util.BoundingBox, 0)
-// }
-
 func (r *RoomBase) ClearBlocks() {
 	r.Blocks = make(map[util.Vec3i]block.Block)
 }
@@ -199,19 +152,12 @@ func (r *RoomBase) ClearEntranceLocations() {
 }
 
 func (r *RoomBase) ClearAll() {
-	// r.ClearBoundingBoxes()
 	r.ClearBlocks()
 	r.ClearReplaceableBlocks()
 	r.ClearEntranceLocations()
 }
 
 func (r *RoomBase) Contains(pos util.Vec3i) bool {
-	// for _, bb := range r.BoundingBoxes {
-	// 	if bb.Contains(pos) {
-	// 		return true
-	// 	}
-	// }
-	// return false
 	_, ok := r.Blocks[pos]
 	return ok
 }

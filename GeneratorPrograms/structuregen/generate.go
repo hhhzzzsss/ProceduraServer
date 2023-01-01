@@ -71,22 +71,28 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 		Pos:           util.MakeVec3i(settings.XOrigin, settings.YOrigin, settings.ZOrigin),
 		Dir:           settings.StartingEntranceDirection,
 		RoomGenerator: settings.StartingRoomGenerator,
-		Meta:          &settings.StartingRoomMeta,
+		Meta:          settings.StartingRoomMeta,
 	}
 	potentialEntrances := []rooms.EntranceLocation{origin_entrance}
 
 	roomViews := make([]*rooms.RoomView, 0)
+	roomMetas := make([]rooms.RoomMeta, 0)
 
 	for len(potentialEntrances) > 0 {
 		// Select random entrance location and remove from potentialEntrances
 		selectedEntranceLocation := removeRandomFromSlice(&potentialEntrances)
 
 		// Generate room and add new RoomView / EntranceLocation(s) to lists if exists
-		rv := generateRoom(selectedEntranceLocation, &region, settings)
+		rv, meta := generateRoom(selectedEntranceLocation, &region, settings)
 		if rv != nil {
 			roomViews = append(roomViews, rv)
+			roomMetas = append(roomMetas, meta)
 			potentialEntrances = append(potentialEntrances, rv.GetEntranceLocations()...)
 		}
+	}
+
+	for i, rv := range roomViews {
+		rv.Room.Finalize(rooms.GetRegionView(&region, rv), roomMetas[i])
 	}
 
 	fmt.Println("Filling superflat terrain...")
@@ -111,7 +117,7 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 	return region
 }
 
-func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region, settings *StructureGenSettings) *rooms.RoomView {
+func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region, settings *StructureGenSettings) (*rooms.RoomView, rooms.RoomMeta) {
 	var possibleRooms []rooms.Room
 	var possibleRoomWeights []float32
 	if entranceLocation.RoomGenerator == nil {
@@ -119,13 +125,20 @@ func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region
 	} else {
 		possibleRooms, possibleRoomWeights = entranceLocation.RoomGenerator()
 	}
+
 	parent := entranceLocation.Parent
 	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
 generateRoomOuterLoop:
 	for attempts := 0; attempts < settings.MaxRoomAttempts && len(possibleRooms) > 0; attempts++ {
 		room := removeWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
-		room.Initialize(entranceLocation.Meta)
-		roomView := rooms.GetView(room, entranceLocation.Pos, entranceLocation.Dir)
+
+		meta := entranceLocation.Meta
+		room.Initialize(meta)
+		if room.GetRoomBase().Invalid {
+			continue
+		}
+
+		roomView := rooms.GetRoomView(room, entranceLocation.Pos, entranceLocation.Dir)
 		transformedMainEntrance := roomView.GetTransformedMainEntranceExterior()
 		if parent != nil {
 			for pos := range transformedMainEntrance {
@@ -144,6 +157,7 @@ generateRoomOuterLoop:
 				continue generateRoomOuterLoop
 			}
 		}
+
 		if parent != nil {
 			for pos, block := range transformedMainEntrance {
 				parent.ReplaceBlock(pos, block)
@@ -158,9 +172,10 @@ generateRoomOuterLoop:
 		for i, pos := range transformedPositions {
 			region.SetWithName(pos.X, pos.Y, pos.Z, transformedBlocks[i].ToString())
 		}
-		return &roomView
+
+		return &roomView, meta
 	}
-	return nil
+	return nil, rooms.DefaultRoomMeta
 }
 
 func removeRandomFromSlice[T any](s *[]T) T {

@@ -10,12 +10,12 @@ import (
 
 type Decoration map[util.Vec3i]block.Block
 type DecorationMeta struct {
-	xdim, ydim, zdim int
+	XDim, YDim, ZDim int
 }
 
 var DefaultDecorationMeta DecorationMeta = DecorationMeta{}
 
-type DecorationGenerator func(meta *DecorationMeta) Decoration
+type DecorationGenerator func(meta DecorationMeta) Decoration
 
 func (d Decoration) Rotate(a int) Decoration {
 	newDecoration := make(Decoration)

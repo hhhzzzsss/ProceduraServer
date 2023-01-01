@@ -1,6 +1,7 @@
 package rooms
 
 import (
+	"github.com/hhhzzzsss/procedura-generator/region"
 	"github.com/hhhzzzsss/procedura-generator/structuregen/block"
 	"github.com/hhhzzzsss/procedura-generator/structuregen/decorations"
 	"github.com/hhhzzzsss/procedura-generator/structuregen/direction"
@@ -26,10 +27,10 @@ type Room interface {
 		- Possible entrance locations connecting to other rooms
 		- All decorations that apply prior to adding other adjacent rooms
 	*/
-	Initialize(meta *RoomMeta)
+	Initialize(meta RoomMeta)
 
 	// Whatever decorations/blocks to add after adding other adjacent rooms
-	Finalize(meta *RoomMeta)
+	Finalize(rv RegionView, meta RoomMeta)
 }
 
 type RoomBase struct {
@@ -38,6 +39,7 @@ type RoomBase struct {
 	MainEntrance         decorations.Decoration
 	MainEntranceLocation util.Vec3i
 	EntranceLocations    []EntranceLocation
+	Invalid              bool // Flag to set when cancelling room generation during Initialize()
 }
 
 type RoomMeta struct {
@@ -52,18 +54,13 @@ type EntranceLocation struct {
 	Pos           util.Vec3i                 // Base position of the entrance
 	Dir           direction.Direction        // Direction of the entrance (relative to the potential room that will be put here)
 	RoomGenerator func() ([]Room, []float32) // Returns a slice of possible rooms to put here and their corresponding weights
-	Meta          *RoomMeta                  // Additional info for room generation
+	Meta          RoomMeta                   // Additional info for room generation
 	Parent        *RoomView                  // RoomView that is offering the EntranceLocation
 }
 
-type RoomView struct {
-	Room Room
-	Pos  util.Vec3i
-	Dir  int
-}
-
-func GetView(r Room, origin util.Vec3i, dir direction.Direction) RoomView {
-	return RoomView{r, origin, int(dir)}
+func (r *RoomBase) GetBlock(x, y, z int) (block.Block, bool) {
+	b, ok := r.Blocks[util.MakeVec3i(x, y, z)]
+	return b, ok
 }
 
 // Sets the block at a position
@@ -125,7 +122,7 @@ func (r *RoomBase) AddEntranceLocation(
 	X, Y, Z int,
 	Dir direction.Direction,
 	GetPossibleRooms func() ([]Room, []float32),
-	Meta *RoomMeta,
+	Meta RoomMeta,
 ) {
 	r.EntranceLocations = append(r.EntranceLocations, EntranceLocation{util.MakeVec3i(X, Y, Z), Dir, GetPossibleRooms, Meta, nil})
 }
@@ -152,6 +149,7 @@ func (r *RoomBase) ClearEntranceLocations() {
 }
 
 func (r *RoomBase) ClearAll() {
+	r.Invalid = false
 	r.ClearBlocks()
 	r.ClearReplaceableBlocks()
 	r.ClearEntranceLocations()
@@ -160,6 +158,27 @@ func (r *RoomBase) ClearAll() {
 func (r *RoomBase) Contains(pos util.Vec3i) bool {
 	_, ok := r.Blocks[pos]
 	return ok
+}
+
+func (r *RoomBase) CanReplaceBlock(v util.Vec3i) bool {
+	b, b_ok := r.Blocks[v]
+	replaceable, r_ok := r.ReplaceableBlocks[v]
+
+	if r_ok {
+		return replaceable
+	} else {
+		return b_ok && b.IsAir()
+	}
+}
+
+type RoomView struct {
+	Room Room
+	Pos  util.Vec3i
+	Dir  int
+}
+
+func GetRoomView(r Room, origin util.Vec3i, dir direction.Direction) RoomView {
+	return RoomView{r, origin, int(dir)}
 }
 
 // Transforms a vector from room space to global space
@@ -190,14 +209,7 @@ func (rv *RoomView) GetReplaceableBlock(v util.Vec3i) (bool, bool) {
 
 func (rv *RoomView) CanReplaceBlock(v util.Vec3i) bool {
 	vTrans := rv.InvTransformVec(v)
-	b := rv.Room.GetRoomBase().Blocks[vTrans]
-	r, r_ok := rv.Room.GetRoomBase().ReplaceableBlocks[vTrans]
-
-	if r_ok {
-		return r
-	} else {
-		return b.IsAir()
-	}
+	return rv.Room.GetRoomBase().CanReplaceBlock(vTrans)
 }
 
 func (rv *RoomView) ReplaceBlock(v util.Vec3i, b block.Block) {
@@ -245,4 +257,76 @@ func (rv *RoomView) GetTransformedBlocks() ([]util.Vec3i, []block.Block) {
 
 func (rv *RoomView) Contains(v util.Vec3i) bool {
 	return rv.Room.GetRoomBase().Contains(rv.InvTransformVec(v))
+}
+
+type RegionView struct {
+	Region   *region.Region
+	RoomView *RoomView
+}
+
+func GetRegionView(region *region.Region, rv *RoomView) RegionView {
+	return RegionView{region, rv}
+}
+
+func (rv *RegionView) IsInRange(x, y, z int) bool {
+	v := util.MakeVec3i(x, y, z)
+	regVec := rv.RoomView.TransformVec(v)
+	return rv.Region.IsInRange(regVec.X, regVec.Y, regVec.Z)
+}
+
+func (rv *RegionView) IsEmpty(x, y, z int) bool {
+	v := util.MakeVec3i(x, y, z)
+	regVec := rv.RoomView.TransformVec(v)
+	id := rv.Region.Get(regVec.X, regVec.Y, regVec.Z)
+	return id == 0
+}
+
+func (rv *RegionView) SetBlock(x, y, z int, block block.Block) {
+	v := util.MakeVec3i(x, y, z)
+	regVec := rv.RoomView.TransformVec(v)
+	rv.Region.SetWithName(regVec.X, regVec.Y, regVec.Z, block.ToString())
+}
+
+func (rv *RegionView) CanPlaceDecoration(x, y, z int, d decorations.Decoration) bool {
+	decorationPos := util.MakeVec3i(x, y, z)
+	for pos := range d {
+		roomPos := decorationPos.Add(pos)
+		regPos := rv.RoomView.TransformVec(roomPos)
+		if !rv.Region.IsInRange(regPos.X, regPos.Y, regPos.Z) {
+			return false
+		}
+		if !rv.RoomView.Room.GetRoomBase().CanReplaceBlock(roomPos) {
+			return false
+		}
+	}
+	return true
+}
+
+func (rv *RegionView) CanPlaceDecorationExceedingRoom(x, y, z int, d decorations.Decoration) bool {
+	decorationPos := util.MakeVec3i(x, y, z)
+	for pos := range d {
+		roomPos := decorationPos.Add(pos)
+		regPos := rv.RoomView.TransformVec(roomPos)
+		if !rv.Region.IsInRange(regPos.X, regPos.Y, regPos.Z) {
+			return false
+		}
+		if !rv.RoomView.Room.GetRoomBase().CanReplaceBlock(roomPos) && rv.Region.Get(regPos.X, regPos.Y, regPos.Z) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (rv *RegionView) ApplyDecoration(x, y, z int, d decorations.Decoration) {
+	decorationPos := util.MakeVec3i(x, y, z)
+	for pos, block := range d {
+		roomPos := decorationPos.Add(pos)
+		regPos := rv.RoomView.TransformVec(roomPos)
+		if !rv.Region.IsInRange(regPos.X, regPos.Y, regPos.Z) {
+			continue
+		}
+		rv.RoomView.Room.GetRoomBase().Blocks[roomPos] = block
+		rv.RoomView.Room.GetRoomBase().ReplaceableBlocks[roomPos] = false
+		rv.Region.SetWithName(regPos.X, regPos.Y, regPos.Z, block.Rotate(int(rv.RoomView.Dir)).ToString())
+	}
 }

@@ -32,13 +32,28 @@ func MakeBlock(name string, state map[string]string) Block {
 }
 
 func (b Block) Rotate(a int) Block {
-	dir, ok := b.state["facing"]
-	if ok {
+	if a != 0 && len(b.state) != 0 {
 		newState := make(map[string]string)
 		for key, value := range b.state {
-			newState[key] = value
+			switch key {
+			case "facing":
+				newState["facing"] = direction.RotateDirectionString(value, a)
+			case "axis":
+				if a == 1 || a == 3 {
+					if value == "z" {
+						newState["axis"] = "x"
+					} else if value == "x" {
+						newState["axis"] = "z"
+					} else {
+						newState["axis"] = value
+					}
+				} else {
+					newState["axis"] = value
+				}
+			default:
+				newState[direction.RotateDirectionString(key, a)] = value
+			}
 		}
-		newState["facing"] = direction.RotateDirectionString(dir, a)
 		return MakeBlock(b.name, newState)
 	} else {
 		return b

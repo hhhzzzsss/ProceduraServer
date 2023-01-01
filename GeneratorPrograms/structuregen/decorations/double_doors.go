@@ -4,9 +4,9 @@ import (
 	"github.com/hhhzzzsss/procedura-generator/structuregen/block"
 )
 
-func DoubleDoors(meta *DecorationMeta) Decoration {
+func DoubleDoors(meta DecorationMeta) Decoration {
 	dec := make(Decoration)
-	door_material := randMat(WOOD_DOOR_MATERIALS)
+	door_material := RandMat(WOOD_MATERIALS) + "_door"
 	llDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "lower", "hinge": "left"})
 	ulDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "upper", "hinge": "left"})
 	lrDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "lower", "hinge": "right"})

@@ -6,7 +6,7 @@ import (
 
 func DoubleDoors(meta DecorationMeta) Decoration {
 	dec := make(Decoration)
-	door_material := RandMat(WOOD_MATERIALS) + "_door"
+	door_material := block.RandMat(block.WOOD_MATERIALS) + "_door"
 	llDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "lower", "hinge": "left"})
 	ulDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "upper", "hinge": "left"})
 	lrDoor := block.MakeBlock(door_material, map[string]string{"facing": "west", "half": "lower", "hinge": "right"})

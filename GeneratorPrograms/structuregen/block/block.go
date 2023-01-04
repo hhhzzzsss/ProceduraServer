@@ -3,6 +3,7 @@ package block
 import (
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hhhzzzsss/procedura-generator/structuregen/direction"
@@ -50,6 +51,12 @@ func (b Block) Rotate(a int) Block {
 				} else {
 					newState["axis"] = value
 				}
+			case "rotation":
+				dir, err := strconv.Atoi(value)
+				if err != nil {
+					panic(err.Error())
+				}
+				newState["rotation"] = strconv.Itoa((dir + 4*a) % 16)
 			default:
 				newState[direction.RotateDirectionString(key, a)] = value
 			}

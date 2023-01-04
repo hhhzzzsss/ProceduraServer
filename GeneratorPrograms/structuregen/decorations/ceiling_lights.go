@@ -40,7 +40,7 @@ func CeilingLight0(meta DecorationMeta) Decoration {
 
 	light_block := block.RandBlock(block.LIGHT_BLOCKS)
 
-	wood_material := RandMat(WOOD_MATERIALS)
+	wood_material := block.RandMat(block.WOOD_MATERIALS)
 	trapdoor_material := wood_material + "_trapdoor"
 	west_trapdoor := block.MakeBlock(trapdoor_material, map[string]string{"facing": "west", "half": "top", "open": "true"})
 	north_trapdoor := block.MakeBlock(trapdoor_material, map[string]string{"facing": "north", "half": "top", "open": "true"})
@@ -108,7 +108,7 @@ func CeilingLight1(meta DecorationMeta) Decoration {
 
 	lantern := block.MakeBlock("lantern", map[string]string{"hanging": "true"})
 
-	wood_material := RandMat(WOOD_MATERIALS)
+	wood_material := block.RandMat(block.WOOD_MATERIALS)
 	sign_material := wood_material + "_wall_sign"
 	west_sign := block.MakeBlock(sign_material, map[string]string{"facing": "west"})
 	north_sign := block.MakeBlock(sign_material, map[string]string{"facing": "north"})
@@ -137,7 +137,7 @@ func CeilingLight1(meta DecorationMeta) Decoration {
 	case 4:
 		chain = block.MakeBlock("lightning_rod", map[string]string{"facing": "up"})
 	case 5:
-		chain = block.MakeBlock(RandMat(GRAYSCALE_COLORS)+"_stained_glass_pane", nil)
+		chain = block.MakeBlock(block.RandMat(block.GRAYSCALE_COLORS)+"_stained_glass_pane", nil)
 	}
 
 	// black stained glass goes well with hoppers
@@ -210,9 +210,9 @@ func CeilingLight2(meta DecorationMeta) Decoration {
 	hang_rand := rand.Intn(3)
 	switch hang_rand {
 	case 0:
-		hang_material = RandMat(WOOD_MATERIALS) + "_fence"
+		hang_material = block.RandMat(block.WOOD_MATERIALS) + "_fence"
 	case 1:
-		hang_material = RandMat(DYE_COLORS) + "_stained_glass_pane"
+		hang_material = block.RandMat(block.DYE_COLORS) + "_stained_glass_pane"
 	case 2:
 		hang_material = "iron_bars"
 	}

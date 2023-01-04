@@ -2,7 +2,6 @@ package structuregen
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/hhhzzzsss/procedura-generator/region"
 	"github.com/hhhzzzsss/procedura-generator/structuregen/direction"
@@ -80,7 +79,7 @@ func GenerateStructure(settings *StructureGenSettings) region.Region {
 
 	for len(potentialEntrances) > 0 {
 		// Select random entrance location and remove from potentialEntrances
-		selectedEntranceLocation := removeRandomFromSlice(&potentialEntrances)
+		selectedEntranceLocation := util.RemoveRandomFromSlice(&potentialEntrances)
 
 		// Generate room and add new RoomView / EntranceLocation(s) to lists if exists
 		rv, meta := generateRoom(selectedEntranceLocation, &region, settings)
@@ -130,7 +129,7 @@ func generateRoom(entranceLocation rooms.EntranceLocation, region *region.Region
 	xdim, ydim, zdim := settings.XDim, settings.YDim, settings.ZDim
 generateRoomOuterLoop:
 	for attempts := 0; attempts < settings.MaxRoomAttempts && len(possibleRooms) > 0; attempts++ {
-		room := removeWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
+		room := util.RemoveWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
 
 		meta := entranceLocation.Meta
 		room.Initialize(meta)
@@ -176,44 +175,4 @@ generateRoomOuterLoop:
 		return &roomView, meta
 	}
 	return nil, rooms.DefaultRoomMeta
-}
-
-func removeRandomFromSlice[T any](s *[]T) T {
-	selectedIdx := rand.Intn(len(*s))
-	lastIdx := len(*s) - 1
-	selectedElem := (*s)[selectedIdx]
-	(*s)[selectedIdx] = (*s)[lastIdx]
-	(*s) = (*s)[:lastIdx]
-	return selectedElem
-}
-
-func removeWeightedRandomFromSlice[T any](s *[]T, weights *[]float32) T {
-	if len(*s) != len(*weights) {
-		panic("Element slice must have same length as weight slice")
-	}
-
-	lastIdx := len(*s) - 1
-
-	var totalWeight float32 = 0
-	for _, weight := range *weights {
-		totalWeight += weight
-	}
-
-	rval := rand.Float32() * totalWeight
-	var cumWeight float32 = 0
-	for i, weight := range *weights {
-		cumWeight += weight
-		if cumWeight >= rval {
-			selectedElem := (*s)[i]
-			(*s)[i] = (*s)[lastIdx]
-			(*s) = (*s)[:lastIdx]
-			(*weights)[i] = (*weights)[lastIdx]
-			(*weights) = (*weights)[:lastIdx]
-			return selectedElem
-		}
-	}
-	selectedElem := (*s)[lastIdx]
-	(*s) = (*s)[:lastIdx]
-	(*weights) = (*weights)[:lastIdx]
-	return selectedElem
 }

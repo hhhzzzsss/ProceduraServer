@@ -108,4 +108,64 @@ func (r *DefaultRoom) Finalize(rv RegionView, meta RoomMeta) {
 			break
 		}
 	}
+
+	if meta.AboveGround {
+		r.generateWindows(rv)
+	}
+}
+
+func (r *DefaultRoom) generateWindows(rv RegionView) {
+	var wallOrigins = [4]util.Vec3i{
+		util.MakeVec3i(0, 1, 1),
+		util.MakeVec3i(r.roomSize-2, 1, 0),
+		util.MakeVec3i(r.roomSize-1, 1, r.roomSize-2),
+		util.MakeVec3i(1, 1, r.roomSize-1),
+	}
+
+	wallSections := make([]WallSection, 0)
+
+	for dir := 0; dir < 4; dir++ {
+		orig := wallOrigins[dir]
+		perpendicularOffset := direction.DirectionOffsets[dir]
+		parallelOffset := direction.DirectionOffsets[(dir+3)%4]
+		sectionStart := 0
+	wallLoop:
+		for i := 0; i < r.roomSize-2; i++ {
+			columnBase := orig.Add(parallelOffset.Scale(i))
+			for j := 0; j < r.roomHeight-2; j++ {
+				wallPos := columnBase.Add(util.MakeVec3i(0, j, 0))
+				outsidePos := wallPos.Add(perpendicularOffset)
+				if !r.CanReplaceBlock(wallPos) || (j > 0 && j < r.roomHeight-3 && !rv.IsEmpty(outsidePos.X, outsidePos.Y, outsidePos.Z)) {
+					sectionWidth := i - sectionStart
+					if sectionWidth > 0 {
+						sectionOrigin := orig.Add(parallelOffset.Scale(sectionStart))
+						wallSections = append(wallSections, MakeWallSection(sectionOrigin.X, sectionOrigin.Y, sectionOrigin.Z, sectionWidth, r.roomHeight-2, dir))
+					}
+					sectionStart = i + 1
+					continue wallLoop
+				}
+			}
+		}
+		sectionWidth := (r.roomSize - 2) - sectionStart
+		if sectionWidth > 0 {
+			sectionOrigin := orig.Add(parallelOffset.Scale(sectionStart))
+			wallSections = append(wallSections, MakeWallSection(sectionOrigin.X, sectionOrigin.Y, sectionOrigin.Z, sectionWidth, r.roomHeight-2, dir))
+		}
+	}
+
+	for _, section := range wallSections {
+		if section.Width < 4 {
+			continue
+		}
+		if rand.Intn(2) == 0 {
+			rv.FillWallSection(section, 0, 0, 1, 1, block.GLASS)
+			if rand.Intn(2) == 0 {
+				windowsill := decorations.Windowsill(decorations.DecorationMeta{ZDim: section.Width}).Rotate(section.Dir)
+				pos := util.MakeVec3i(section.X, section.Y, section.Z).Sub(direction.DirectionOffsets[section.Dir])
+				if rv.CanPlaceDecoration(pos.X, pos.Y, pos.Z, windowsill) {
+					rv.ApplyDecoration(pos.X, pos.Y, pos.Z, windowsill)
+				}
+			}
+		}
+	}
 }

@@ -132,6 +132,9 @@ generateRoomOuterLoop:
 		room := util.RemoveWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
 
 		meta := entranceLocation.Meta
+		if entranceLocation.Pos.Y >= 50 {
+			meta.AboveGround = true
+		}
 		room.Initialize(meta)
 		if room.GetRoomBase().Invalid {
 			continue

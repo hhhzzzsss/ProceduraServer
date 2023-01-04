@@ -44,6 +44,7 @@ type RoomBase struct {
 
 type RoomMeta struct {
 	SolidFacingEntrance bool
+	AboveGround         bool
 }
 
 var DefaultRoomMeta RoomMeta = RoomMeta{
@@ -328,5 +329,48 @@ func (rv *RegionView) ApplyDecoration(x, y, z int, d decorations.Decoration) {
 		rv.RoomView.Room.GetRoomBase().Blocks[roomPos] = block
 		rv.RoomView.Room.GetRoomBase().ReplaceableBlocks[roomPos] = false
 		rv.Region.SetWithName(regPos.X, regPos.Y, regPos.Z, block.Rotate(int(rv.RoomView.Dir)).ToString())
+	}
+}
+
+type WallSection struct {
+	X, Y, Z       int
+	Width, Height int
+	Dir           int
+}
+
+func MakeWallSection(x, y, z, width, height, dir int) WallSection {
+	return WallSection{x, y, z, width, height, dir}
+}
+
+// func (rv *RegionView) WallSectionHasOpenExterior(section WallSection) bool {
+// 	orig := util.MakeVec3i(section.X, section.Y, section.Z)
+// 	perpendicularOffset := direction.DirectionOffsets[section.Dir]
+// 	parallelOffset := direction.DirectionOffsets[(section.Dir+3)%4]
+// 	for i := 0; i < section.Width; i++ {
+// 		for j := 0; j < section.Height; j++ {
+// 			pos := orig
+// 			pos.Y += j
+// 			pos = pos.Add(parallelOffset.Scale(i)).Add(perpendicularOffset)
+// 			if !rv.IsEmpty(pos.X, pos.Y, pos.Z) {
+// 				return false
+// 			}
+// 		}
+// 	}
+// 	return true
+// }
+
+func (rv *RegionView) FillWallSection(section WallSection, padx1, padx2, pady1, pady2 int, block block.Block) {
+	orig := util.MakeVec3i(section.X, section.Y, section.Z)
+	offset := direction.DirectionOffsets[(section.Dir+3)%4]
+	for i := padx1; i < section.Width-padx2; i++ {
+		for j := pady1; j < section.Height-pady2; j++ {
+			roomPos := orig
+			roomPos.Y += j
+			roomPos = roomPos.Add(offset.Scale(i))
+			regPos := rv.RoomView.TransformVec(roomPos)
+			rv.RoomView.Room.GetRoomBase().Blocks[roomPos] = block
+			rv.RoomView.Room.GetRoomBase().ReplaceableBlocks[roomPos] = false
+			rv.Region.SetWithName(regPos.X, regPos.Y, regPos.Z, block.Rotate(int(rv.RoomView.Dir)).ToString())
+		}
 	}
 }

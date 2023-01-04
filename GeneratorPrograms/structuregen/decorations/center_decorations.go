@@ -155,8 +155,9 @@ func CenterDecoration2(meta DecorationMeta) Decoration {
 			center_block_west = block.MakeBlock(block.RandMat(block.SLAB_MATERIALS)+"_slab", map[string]string{"type": "top"})
 			center_block_east = center_block_west
 		case 3:
-			center_block_west = block.MakeBlock(block.RandMat(block.WOOD_MATERIALS)+"_trapdoor", map[string]string{"facing": "east", "half": "top"})
-			center_block_east = block.MakeBlock(block.RandMat(block.WOOD_MATERIALS)+"_trapdoor", map[string]string{"facing": "west", "half": "top"})
+			trapdoor_material := block.RandMat(block.WOOD_MATERIALS) + "_trapdoor"
+			center_block_west = block.MakeBlock(trapdoor_material, map[string]string{"facing": "east", "half": "top"})
+			center_block_east = block.MakeBlock(trapdoor_material, map[string]string{"facing": "west", "half": "top"})
 		}
 		dec.SetBlock(1, 0, 1, center_block_west)
 		dec.SetBlock(1, 0, 2, center_block_west)

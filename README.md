@@ -1,4 +1,4 @@
-# Build Sync Server
+# Procedura Server
 A local server for managing and creating procedural builds in Minecraft
 
 This repo includes the golang code that I've written for my various procedural creations. Each folder in `GeneratorPrograms/cmds` contains a separate entrypoint.

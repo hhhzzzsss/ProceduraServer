@@ -31,9 +31,13 @@ func defaultStartingRoomGenerator() ([]rooms.Room, []float32) {
 func defaultRoomGenerator() ([]rooms.Room, []float32) {
 	rooms := []rooms.Room{
 		&rooms.DefaultRoom{},
+		&rooms.Balcony{},
+		&rooms.Stairs{},
 	}
 	weights := []float32{
 		1.0,
+		0.5,
+		0.2,
 	}
 	return rooms, weights
 }
@@ -132,9 +136,7 @@ generateRoomOuterLoop:
 		room := util.RemoveWeightedRandomFromSlice(&possibleRooms, &possibleRoomWeights)
 
 		meta := entranceLocation.Meta
-		if entranceLocation.Pos.Y >= 50 {
-			meta.AboveGround = true
-		}
+		meta.Elevation = entranceLocation.Pos.Y - 50
 		room.Initialize(meta)
 		if room.GetRoomBase().Invalid {
 			continue

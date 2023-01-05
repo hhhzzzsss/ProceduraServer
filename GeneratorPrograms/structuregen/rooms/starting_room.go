@@ -10,6 +10,7 @@ import (
 type StartingRoom struct {
 	RoomBase
 	roomSize, roomHeight int
+	WallOrigins          [4]util.Vec3i
 }
 
 func (r *StartingRoom) GetRoomBase() *RoomBase {
@@ -26,14 +27,24 @@ func (r *StartingRoom) Initialize(meta RoomMeta) {
 
 	r.roomSize = util.Max(title1_width+2, title2_width+2, credits1_width+4, credits2_width+4)
 	r.roomHeight = 12
+	r.WallOrigins = [4]util.Vec3i{
+		util.MakeVec3i(0, 1, 1),
+		util.MakeVec3i(r.roomSize-2, 1, 0),
+		util.MakeVec3i(r.roomSize-1, 1, r.roomSize-2),
+		util.MakeVec3i(1, 1, r.roomSize-1),
+	}
 
 	r.FillBlocks(0, 0, 0, r.roomSize-1, r.roomHeight-1, r.roomSize-1, block.AIR)
 	r.MakeHollowCuboid(0, 0, 0, r.roomSize-1, r.roomHeight-1, r.roomSize-1, block.SMOOTH_QUARTZ)
 
-	for y := 1; y < r.roomHeight-1; y++ {
-		for x := 2; x < r.roomSize-2; x++ {
-			r.SetReplaceableBlock(x, y, 0, true)
-			r.SetReplaceableBlock(x, y, r.roomSize-1, true)
+	for _, dir := range []int{1, 3} {
+		orig := r.WallOrigins[dir]
+		offset := direction.DirectionOffsets[(dir+3)%4]
+		for i := 1; i < r.roomSize-3; i++ {
+			pos := orig.Add(offset.Scale(i))
+			for y := 1; y < r.roomHeight-1; y++ {
+				r.SetReplaceableBlock(pos.X, y, pos.Z, true)
+			}
 		}
 	}
 
@@ -50,19 +61,19 @@ func (r *StartingRoom) Initialize(meta RoomMeta) {
 	r.MainEntrance = decorations.DoubleDoors(decorations.DefaultDecorationMeta)
 	r.ApplyMainEntrance()
 
-	for i := 2; i < r.roomSize-2; i++ {
-		r.AddEntranceLocation(
-			i, 1, 0,
-			direction.South,
-			nil,
-			DefaultRoomMeta,
-		)
-		r.AddEntranceLocation(
-			i, 1, r.roomSize-1,
-			direction.North,
-			nil,
-			DefaultRoomMeta,
-		)
+	for _, dir := range []int{1, 3} {
+		orig := r.WallOrigins[dir]
+		offset := direction.DirectionOffsets[(dir+3)%4]
+		entranceDirection := direction.Direction((dir + 2) % 4)
+		for i := 1; i < r.roomSize-3; i++ {
+			pos := orig.Add(offset.Scale(i))
+			r.AddEntranceLocation(
+				pos.X, pos.Y, pos.Z,
+				entranceDirection,
+				nil,
+				RoomMeta{LeftWallSpace: i + 1, RightWallSpace: (r.roomSize - 1) - (i + 1)},
+			)
+		}
 	}
 }
 

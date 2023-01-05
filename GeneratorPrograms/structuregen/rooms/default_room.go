@@ -12,6 +12,7 @@ import (
 type DefaultRoom struct {
 	RoomBase
 	roomSize, roomHeight int
+	WallOrigins          [4]util.Vec3i
 }
 
 func (r *DefaultRoom) GetRoomBase() *RoomBase {
@@ -23,18 +24,34 @@ func (r *DefaultRoom) Initialize(meta RoomMeta) {
 
 	r.roomSize = 16
 	r.roomHeight = 8
+	r.WallOrigins = [4]util.Vec3i{
+		util.MakeVec3i(0, 1, 1),
+		util.MakeVec3i(r.roomSize-2, 1, 0),
+		util.MakeVec3i(r.roomSize-1, 1, r.roomSize-2),
+		util.MakeVec3i(1, 1, r.roomSize-1),
+	}
 
 	r.FillBlocks(0, 0, 0, r.roomSize-1, r.roomHeight-1, r.roomSize-1, block.AIR)
 	r.MakeHollowCuboid(0, 0, 0, r.roomSize-1, r.roomHeight-1, r.roomSize-1, block.SMOOTH_QUARTZ)
-	r.FillBlocks(0, -1, 0, r.roomSize-1, -1, r.roomSize-1, block.SMOOTH_QUARTZ)
 
-	for y := 1; y < r.roomHeight-1; y++ {
-		for i := 2; i < r.roomSize-2; i++ {
-			r.SetReplaceableBlock(i, y, 0, true)
-			r.SetReplaceableBlock(i, y, r.roomSize-1, true)
-			r.SetReplaceableBlock(r.roomSize-1, y, i, true)
+	// Extra layer below floor
+	if meta.Elevation < 2 {
+		r.FillBlocks(0, -1, 0, r.roomSize-1, -1, r.roomSize-1, block.SMOOTH_QUARTZ)
+	} else {
+		r.FillBlocks(0, -1, 0, r.roomSize-1, -1, r.roomSize-1, block.MakeBlock("smooth_quartz_slab", map[string]string{"type": "top"}))
+	}
+
+	for dir := 0; dir < 4; dir++ {
+		orig := r.WallOrigins[dir]
+		offset := direction.DirectionOffsets[(dir+3)%4]
+		for i := 1; i < r.roomSize-3; i++ {
+			pos := orig.Add(offset.Scale(i))
+			for y := 1; y < r.roomHeight-1; y++ {
+				r.SetReplaceableBlock(pos.X, y, pos.Z, true)
+			}
 		}
 	}
+
 	for x := 1; x < r.roomSize-1; x++ {
 		for z := 1; z < r.roomSize-1; z++ {
 			r.SetReplaceableBlock(x, 0, z, true)
@@ -45,25 +62,19 @@ func (r *DefaultRoom) Initialize(meta RoomMeta) {
 	r.MainEntrance = decorations.DoubleDoors(decorations.DefaultDecorationMeta)
 	r.ApplyMainEntrance()
 
-	for i := 2; i < r.roomSize-2; i++ {
-		r.AddEntranceLocation(
-			i, 1, 0,
-			direction.South,
-			nil,
-			DefaultRoomMeta,
-		)
-		r.AddEntranceLocation(
-			i, 1, r.roomSize-1,
-			direction.North,
-			nil,
-			DefaultRoomMeta,
-		)
-		r.AddEntranceLocation(
-			r.roomSize-1, 1, i,
-			direction.West,
-			nil,
-			DefaultRoomMeta,
-		)
+	for _, dir := range []int{1, 2, 3} {
+		orig := r.WallOrigins[dir]
+		offset := direction.DirectionOffsets[(dir+3)%4]
+		entranceDirection := direction.Direction((dir + 2) % 4)
+		for i := 1; i < r.roomSize-3; i++ {
+			pos := orig.Add(offset.Scale(i))
+			r.AddEntranceLocation(
+				pos.X, pos.Y, pos.Z,
+				entranceDirection,
+				nil,
+				RoomMeta{LeftWallSpace: i + 1, RightWallSpace: (r.roomSize - 1) - (i + 1)},
+			)
+		}
 	}
 }
 
@@ -109,23 +120,16 @@ func (r *DefaultRoom) Finalize(rv RegionView, meta RoomMeta) {
 		}
 	}
 
-	if meta.AboveGround {
+	if meta.Elevation >= 0 {
 		r.generateWindows(rv)
 	}
 }
 
 func (r *DefaultRoom) generateWindows(rv RegionView) {
-	var wallOrigins = [4]util.Vec3i{
-		util.MakeVec3i(0, 1, 1),
-		util.MakeVec3i(r.roomSize-2, 1, 0),
-		util.MakeVec3i(r.roomSize-1, 1, r.roomSize-2),
-		util.MakeVec3i(1, 1, r.roomSize-1),
-	}
-
 	wallSections := make([]WallSection, 0)
 
 	for dir := 0; dir < 4; dir++ {
-		orig := wallOrigins[dir]
+		orig := r.WallOrigins[dir]
 		perpendicularOffset := direction.DirectionOffsets[dir]
 		parallelOffset := direction.DirectionOffsets[(dir+3)%4]
 		sectionStart := 0

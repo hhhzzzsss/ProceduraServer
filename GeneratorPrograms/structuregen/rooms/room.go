@@ -43,13 +43,11 @@ type RoomBase struct {
 }
 
 type RoomMeta struct {
-	SolidFacingEntrance bool
-	AboveGround         bool
+	Elevation                     int
+	LeftWallSpace, RightWallSpace int
 }
 
-var DefaultRoomMeta RoomMeta = RoomMeta{
-	SolidFacingEntrance: true,
-}
+var DefaultRoomMeta RoomMeta = RoomMeta{}
 
 type EntranceLocation struct {
 	Pos           util.Vec3i                 // Base position of the entrance
@@ -122,10 +120,10 @@ func (r *RoomBase) ApplyMainEntrance() {
 func (r *RoomBase) AddEntranceLocation(
 	X, Y, Z int,
 	Dir direction.Direction,
-	GetPossibleRooms func() ([]Room, []float32),
+	RoomGenerator func() ([]Room, []float32),
 	Meta RoomMeta,
 ) {
-	r.EntranceLocations = append(r.EntranceLocations, EntranceLocation{util.MakeVec3i(X, Y, Z), Dir, GetPossibleRooms, Meta, nil})
+	r.EntranceLocations = append(r.EntranceLocations, EntranceLocation{util.MakeVec3i(X, Y, Z), Dir, RoomGenerator, Meta, nil})
 }
 
 func (r *RoomBase) ApplyDecoration(x, y, z int, d decorations.Decoration) {
@@ -256,6 +254,16 @@ func (rv *RoomView) GetTransformedBlocks() ([]util.Vec3i, []block.Block) {
 	return positions, blocks
 }
 
+func (rv *RoomView) GetTransformedReplaceableBlocks() ([]util.Vec3i, []bool) {
+	positions := make([]util.Vec3i, 0)
+	states := make([]bool, 0)
+	for pos, state := range rv.Room.GetRoomBase().ReplaceableBlocks {
+		positions = append(positions, rv.TransformVec(pos))
+		states = append(states, state)
+	}
+	return positions, states
+}
+
 func (rv *RoomView) Contains(v util.Vec3i) bool {
 	return rv.Room.GetRoomBase().Contains(rv.InvTransformVec(v))
 }
@@ -278,6 +286,9 @@ func (rv *RegionView) IsInRange(x, y, z int) bool {
 func (rv *RegionView) IsEmpty(x, y, z int) bool {
 	v := util.MakeVec3i(x, y, z)
 	regVec := rv.RoomView.TransformVec(v)
+	if !rv.Region.IsInRange(regVec.X, regVec.Y, regVec.Z) {
+		return true
+	}
 	id := rv.Region.Get(regVec.X, regVec.Y, regVec.Z)
 	return id == 0
 }

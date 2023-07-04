@@ -14,3 +14,6 @@ whitelist.json
 **/MMD_DUMP
 mmd_dumps/
 plugins/*/
+paper.yml-README.txt
+version_history.json
+config/legacy-backup/paper.yml.old

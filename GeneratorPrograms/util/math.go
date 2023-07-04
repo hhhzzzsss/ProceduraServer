@@ -19,6 +19,16 @@ func Max[T constraints.Ordered](elems ...T) T {
 	return maxElem
 }
 
+func Clamp(x, lower, upper float64) float64 {
+	if x < lower {
+		return lower
+	} else if x > upper {
+		return upper
+	} else {
+		return x
+	}
+}
+
 func RemoveRandomFromSlice[T any](s *[]T) T {
 	selectedIdx := rand.Intn(len(*s))
 	lastIdx := len(*s) - 1

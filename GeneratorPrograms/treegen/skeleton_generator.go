@@ -54,12 +54,13 @@ type GeneratorSettings struct {
 	KillDistance     float64
 	AttractionRadius float64
 
-	BranchPower    float64
-	BranchDecay    float64
-	BaseThickness  float64
-	BaseBulge      float64
-	TaperThreshold float64
-	TaperRate      float64 // should be less than StepSize to have an effect
+	DoThicknessPostprocess bool
+	BranchPower            float64
+	BranchDecay            float64
+	BaseThickness          float64
+	BaseBulge              float64
+	TaperThreshold         float64
+	TaperRate              float64 // should be less than StepSize to have an effect
 
 	BalancingThreshold int
 }
@@ -71,12 +72,13 @@ func GetDefaultSettings() GeneratorSettings {
 		KillDistance:     5,
 		AttractionRadius: math.Inf(1),
 
-		BranchPower:    2,
-		BranchDecay:    0,
-		BaseThickness:  15,
-		BaseBulge:      0,
-		TaperThreshold: math.Inf(1),
-		TaperRate:      0.7,
+		DoThicknessPostprocess: true,
+		BranchPower:            2,
+		BranchDecay:            0,
+		BaseThickness:          15,
+		BaseBulge:              0,
+		TaperThreshold:         math.Inf(1),
+		TaperRate:              0.7,
 
 		BalancingThreshold: 20,
 	}
@@ -97,9 +99,11 @@ func GenerateSkeleton(roots []*SkeletonNode, attractors []*Attractor, settings G
 	fmt.Print("Calculating node diameters...")
 	for _, root := range roots {
 		calculateThickness(root, &settings)
-		scaleThickness(root, settings.BaseThickness/root.thickness)
-		root.thickness += settings.BaseBulge
-		taperThickness(root, &settings)
+		if settings.DoThicknessPostprocess {
+			scaleThickness(root, settings.BaseThickness/root.thickness)
+			root.thickness += settings.BaseBulge
+			taperThickness(root, &settings)
+		}
 	}
 	fmt.Print(" Done.\n")
 
